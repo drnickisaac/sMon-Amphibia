@@ -1,4 +1,5 @@
 # explore model output
+library(sparta)
 
 # read in the model outputs
 list.files('model-outputs') -> sp_mods
