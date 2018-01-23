@@ -5,10 +5,10 @@ library(lubridate)
 
 # REad the data from a local copy of the raw records
 #data <- st_read('raw-data/Data_DGHT_Schulte/Data_DGHT_Schulte.dbf')
-dght_dates<- st_read("raw data/all_specs_all_plots.shp")
+dght_dates<- st_read("raw-data/all_specs_all_plots.shp")
 dght_dates$Group<-NA
-dght_dates$Group[dght_dates$taxon %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris")]<-c("newts")
-dght_dates$Group[!(dght_dates$taxon %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris"))]<-c("frogs")
+dght_dates$Group[dght_dates$Species %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris")]<-c("newts")
+dght_dates$Group[!(dght_dates$Species %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris"))]<-c("frogs")
 
 
 ## throw out all thse that have year range as precision
