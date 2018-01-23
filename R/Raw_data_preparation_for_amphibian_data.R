@@ -50,6 +50,9 @@ visits_per_year_group<-ddply(amph_date_precision,.(start_year,MTB_Q,Group),summa
 amph_date_precision <- subset(amph_date_precision, end_year %in% 1980:2013)
 
 # now save copies of the frogs and newts separately
+# put copies in a folder called derived-data (create if it doesn't already exist)
+if(!dir.exists('derived-data')) dir.create('derived-data')
+  
 anura <- subset(amph_date_precision, Group == 'frogs')
 save(anura, file='derived-data/anura_date_precision.rData')
 
