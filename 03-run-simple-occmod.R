@@ -17,6 +17,7 @@ anura_fod <- formatOccData(taxa= as.character(amph_date_precision$Species[amph_d
 # Warning - half the data appear to be duplicates - to investigate
 str(anura_fod)
 
+
 table(anura_fod$occDetdata$L) 
 
 
