@@ -6,6 +6,7 @@ library(lubridate)
 # REad the data from a local copy of the raw records
 #data <- st_read('raw-data/Data_DGHT_Schulte/Data_DGHT_Schulte.dbf')
 dght_dates<- st_read("raw-data/all_specs_all_plots.shp")
+
 dght_dates$Group<-NA
 dght_dates$Group[dght_dates$Species %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris")]<-c("newts")
 dght_dates$Group[!(dght_dates$Species %in% c("Salamandra atra","Ichthyosaura alpestris","Lissotriton helveticus","Salamandra salamandra","Triturus cristatus","Lissotriton vulgaris"))]<-c("frogs")
@@ -48,4 +49,10 @@ visits_per_year_group<-ddply(amph_date_precision,.(start_year,MTB_Q,Group),summa
 # reduce the data to the subset from 1980 to 2013
 amph_date_precision <- subset(amph_date_precision, end_year %in% 1980:2013)
 
+# now save copies of the frogs and newts separately
+anura <- subset(amph_date_precision, Group == 'frogs')
+save(anura, file='derived-data/anura_date_precision.rData')
+
+newts <- subset(amph_date_precision, Group == 'newts')
+save(newts, file='derived-data/newts_date_precision.rData')
 
