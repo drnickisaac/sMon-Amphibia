@@ -54,7 +54,7 @@ detProb <- function(sims_list, spname=NULL){
         lower95CI = quantile(pDet, 0.025),
         upper95CI = quantile(pDet, 0.975))
   
-  # now plot the 
+  # now plot the detection over time
   gp <- ggplot(data=pDet_summary, x=year, y=mean_pDet) +
     geom_line(aes(x=year, y=mean_pDet, col=factor(ListLength))) +
     geom_ribbon(aes(x=year, ymin=lower95CI, ymax=upper95CI, fill=factor(ListLength)), alpha=0.2) +
@@ -80,20 +80,27 @@ recording_phenology <- function(sims_list, spname=NULL){
   pDet1 <- sims_list$alpha.p
   # pDet1 is an array of dims equal to (niter, nyr)
 
-  jd <- 1:36*10
+  jul_dates <- 1:36*10
   
   if("beta1" %in% names(sims_list)){
     # we ran the Julian Date option
     # So let's scale the detection probabilities to end June (day 180)
-    JDadj <- jd * sims_list$beta1[,1] +  180^2 * sims_list$beta2[,1]
+    JDadj <- sapply(jul_dates, function(jd){
+      jd * sims_list$beta1[,1] +  jd* sims_list$beta2[,1]
+    })
   }
   
-  plot(pDet0, pDet1)
+  pDet <- melt(JDadj)
+  names(pDet) <- c("it", "jd","lgt_pDet")
+  pDet$pDet <- inv.logit(pDet$lgt_pDet)
   
-  # for each date, calculate the offset to detection prob
-  pdjm <- melt(pdj)
+  # now summarize these posterior distributions
+  pDet_summary <-ddply(
+    pDet, .(jd), summarise, 
+    mean_pDet = mean(pDet),
+    lower95CI = quantile(pDet, 0.025),
+    upper95CI = quantile(pDet, 0.975))
   
-  
-  
-  
+  # now convert the jds back to their equivalent Julian Dates
+ o  Ï◊¿
 }
