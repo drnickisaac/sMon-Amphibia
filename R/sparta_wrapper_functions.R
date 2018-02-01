@@ -1,5 +1,5 @@
 #given the directory in which the sparta model outputs are found, put all the models in a list
-# dir = directory of sparta model outputs
+#@param dir = directory of sparta model outputs
 
 getSpartaModels<-function(dir){
   
@@ -19,7 +19,7 @@ getSpartaModels<-function(dir){
 }
 
 #get annual predictions of occupancy for each species
-#models = output of getSpartaModels()
+#@param models = output of getSpartaModels()
 
 annualPredictions <- function(models){
  
@@ -55,7 +55,7 @@ annualPredictions <- function(models){
 }
 
 #plot these predictions (restrict to species with more than 50 observations)
-#myAnnualPredictions = output from annualPredictions()
+#@param myAnnualPredictions = output from annualPredictions()
 
 plotPredictions <- function(myAnnualPredictions){
 
@@ -79,6 +79,7 @@ ggplot(data=subset(myAnnualPredictions,nuRecords>50)) +
 
 
 #get estimates of each species linear population trends and 95% CI
+#@param models = output of getSpartaModels()
 calculateTrends<-function(models){
 
   #get trends for each model
