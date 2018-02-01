@@ -1,12 +1,89 @@
-# calculate the linear trends
+#given the directory in which the sparta model outputs are found, put all the models in a list
+# dir = directory of sparta model outputs
 
-#@ models - a list of all the sparta models for each species
-
-calculateTrends<-function(models){
+getSpartaModels<-function(dir){
   
+  if(!dir%in%list.files()) stop('no such directory found')  
+  
+  list.files(dir) -> sp_mods
+  
+  models <- lapply(sp_mods, function(sp) {
+    load(file=paste0(paste0(dir,"/"),sp))
+    return(out)
+  }
+  )
+  
+  names(models) <- gsub(sp_mods, pa="\\.rdata", repl="")
+  
+  return(models)
+}
+
+#get annual predictions of occupancy for each species
+#models = output of getSpartaModels()
+
+annualPredictions <- function(models){
+ 
+  require(sparta)
+  require(plyr)
+  
+  out<-ldply(models,function(x){
+  
+  #get bugs output
+  temp <- x$BUGSoutput$summary
+  temp <- temp[grep("psi.fs\\[",row.names(temp)),]
+  temp <- data.frame(temp)
+  names(temp) <- gsub("X2.5.","quant_025", names(temp)) 
+  names(temp) <- gsub("X97.5.","quant_975", names(temp)) 
+
+  #add on year and species info
+  temp$Year <- x$min_year:x$max_year
+  temp$Species <- x$SPP_NAME  
+    
+  #get records per species
+  temp$nuRecords <- x$species_observations
+  temp$nuSites <- x$nsites
+  
+  #reorganise
+  temp<-temp[,c("Species","Year","mean","quant_025","quant_975","Rhat","n.eff","nuRecords","nuSites")]
+  
+  return(temp)
+})
+
+  out<-out[,-1]#get rid of superfluous first column
+  return(out)
+
+}
+
+#plot these predictions (restrict to species with more than 50 observations)
+#myAnnualPredictions = output from annualPredictions()
+
+plotPredictions <- function(myAnnualPredictions){
+
+#decide on year breaks to nearest decade
+surveyYears<-sort(unique(myAnnualPredictions$Year))
+surveyYears<-surveyYears[surveyYears%%10==0]
+
+require(ggplot2)
+  
+#plot
+ggplot(data=subset(myAnnualPredictions,nuRecords>50)) +
+  geom_line(aes(x = Year, mean))+
+  geom_point(aes(x = Year, mean,colour = factor(Rhat<1.1)))+
+  geom_ribbon(aes(x=Year, ymin = quant_025, ymax = quant_975), alpha=0.50)+
+  theme_bw() +
+  scale_x_continuous(breaks = surveyYears, labels = surveyYears)+
+  facet_wrap( ~ Species) +
+  theme(legend.position = "none") +
+  ylab("Predicted occupancy proportion")
+}
+
+
+#get estimates of each species linear population trends and 95% CI
+calculateTrends<-function(models){
+
   #get trends for each model
   trends <- lapply(models, occurrenceChange, firstYear=min(df$Year), lastYear=max(df$Year))
-  names(trends) <- gsub(sp_mods, pa="\\.rdata", repl="")
+  names(trends) <- sapply(models,function(x) x$SPP_NAME)
   
   #convert into a data frame
   outputs <- data.frame(
@@ -14,46 +91,9 @@ calculateTrends<-function(models){
     CI.lower = sapply(trends, function(x) x$CIs[1]),
     CI.upper = sapply(trends, function(x) x$CIs[2])) 
   
+  #add number of total records for each species
+  outputs$nuRecords <- sapply(models,function(x) x$species_observations)
+  
   #return it
   return(outputs)
-}
-
-#get annual predictions for each species
-#@ models - a list of all the sparta models for each species
-
-annualPredictions <- function(models){
-
-  library(plyr)
-  ldply(models,function(x){
-  
-  #get annual predictions
-  temp <- data.frame(summary(x))
-  temp$Year<-as.numeric(row.names(summary(x)))
-  temp$Species <- x$SPP_NAME
-  
-  #get RHat values
-  bugsOutput <- x$BUGSoutput$summary
-  bugsOutput <- data.frame(bugsOutput[grepl("psi.fs",row.names(bugsOutput)),])
-  temp$Rhat <- as.numeric(bugsOutput$Rhat)
-  
-  return(temp)
-})
-  
-}
-
-#plot these predictions (restrict to species with more than 50 observations)
-#@ myAnnualPredictions - the annual predictions returned by the above function
-#@ rawData - the original data file of species occurrence records
-
-plotPredictions <- function(myAnnualPredictions,rawData){
-  
-require(ggplot2)
-ggplot(data=subset(myAnnualPredictions,Species %in% names(table(rawData$Species))[table(rawData$Species)>50])) +
-  geom_line(aes(x = Year, mean))+
-  geom_point(aes(x = Year, mean,colour = factor(Rhat<1.1)))+
-  geom_ribbon(aes(x=Year, ymin = quant_025, ymax = quant_975), alpha=0.50)+
-  theme_bw() +
-  scale_x_continuous(labels=c(1990,1995,2000,2005,2010))+
-  facet_wrap( ~ Species) +
-  theme(legend.position = "none")
 }
