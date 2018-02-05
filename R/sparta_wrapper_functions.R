@@ -5,7 +5,7 @@ getSpartaModels<-function(dir){
   
   if(!dir%in%list.files()) stop('no such directory found')  
   
-  list.files(dir) -> sp_mods
+  sp_mods <- list.files(dir)[grepl(".rdata",list.files(dir))] 
   
   models <- lapply(sp_mods, function(sp) {
     load(file=paste0(paste0(dir,"/"),sp))
@@ -83,7 +83,7 @@ ggplot(data=subset(myAnnualPredictions,nuRecords>50)) +
 calculateTrends<-function(models){
 
   #get trends for each model
-  trends <- lapply(models, occurrenceChange, firstYear=min(df$Year), lastYear=max(df$Year))
+  trends <- lapply(models, function(x) occurrenceChange(bayesOut= x, firstYear=x$min_year, lastYear=x$max_year))
   names(trends) <- sapply(models,function(x) x$SPP_NAME)
   
   #convert into a data frame
@@ -95,6 +95,58 @@ calculateTrends<-function(models){
   #add number of total records for each species
   outputs$nuRecords <- sapply(models,function(x) x$species_observations)
   
+  # indicates wheter the trend we see is 'significant' or not
+  outputs$sig<- ifelse(outputs$CI.lower <0 & outputs$CI.upper <0, "-", 
+                       ifelse(outputs$CI.lower >0 & outputs$CI.upper >0, "+", "0") )
+  
   #return it
   return(outputs)
+}
+
+
+
+#Plot the MCMC chains for each occupancy parameter
+#@models is the output of getSpartaModels
+
+plotModels<-function(models,param="psi.fs\\["){
+  
+  #create a directory to put the traceplots
+  newdir <- file.path("model-outputs", "traceplots")
+  dir.create(newdir,showWarnings = FALSE)
+  if (!grepl(newdir,getwd())){
+    setwd(newdir)
+  }
+  
+  #remove any previous plotting files, if there are any
+  if(length(list.files())>0){
+    file.remove(list.files())
+  }
+  
+  #for each species, do the following
+  lapply(models,function(x){
+    require(reshape2)
+    #get the chains
+    df <- melt(x$BUGSoutput$sims.array)
+    #give sensible names
+    names(df)<-c("Index","Chain","Parameter","Estimate")
+    #subset to occupancy parameter
+    df <- subset(df,grepl(param,df$Parameter))
+    
+    #if there are many parameters (i.e. years), just plot every other year
+    if(length(unique(df$Parameter))>20){
+      df$ParamNu <- as.numeric(sub(".*\\[([^][]+)].*", "\\1", df$Parameter))
+      df <- df[df$ParamNu%%2==0,]
+    }
+    
+    #plot it
+    require(ggplot2)
+    ggplot(df)+
+      geom_path(aes(x=Index,y=Estimate,colour=factor(Chain)))+
+      facet_wrap(~Parameter,scales="free",ncol=4)+
+      theme_bw()+
+      theme(legend.position="none")
+    ggsave(paste0(x$SPP_NAME,"_traceplot.png"))
+    
+  })
+  
 }
