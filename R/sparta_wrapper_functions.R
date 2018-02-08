@@ -29,12 +29,15 @@ annualPredictions <- function(models){
   out<-ldply(models,function(x){
   
   #get bugs output
-  temp <- x$BUGSoutput$summary
-  temp <- temp[grep("psi.fs\\[",row.names(temp)),]
-  temp <- data.frame(temp)
+  temp  <- x$BUGSoutput$summary
+  temp1 <- temp[grep("psi.fs\\[", row.names(temp)),]
+  temp2 <- temp[grep("psi.fs.r_", row.names(temp)),]
+  temp <- data.frame(rbind(temp1,temp2))
   names(temp) <- gsub("X2.5.","quant_025", names(temp)) 
   names(temp) <- gsub("X97.5.","quant_975", names(temp)) 
-
+  temp$Region<- NA
+  temp$Region[grep("psi.fs\\[",x=row.names(temp))]<-c("all")
+  temp$Region[grep("psi.fs.r",x=row.names(temp))]<- substr(x=gsub(x=gsub(x=row.names(temp)[grep("psi.fs.r",x=row.names(temp))],"psi.fs.r_",""),"[0-9]",""),1,nchar(x=gsub(x=gsub(x=row.names(temp)[grep("psi.fs.r",x=row.names(temp))],"psi.fs.r_",""),"[0-9]",""))-2)
   #add on year and species info
   temp$Year <- x$min_year:x$max_year
   temp$Species <- x$SPP_NAME  
@@ -44,7 +47,7 @@ annualPredictions <- function(models){
   temp$nuSites <- x$nsites
   
   #reorganise
-  temp<-temp[,c("Species","Year","mean","quant_025","quant_975","Rhat","n.eff","nuRecords","nuSites")]
+  temp<-temp[,c("Species","Year","mean","quant_025","quant_975","Rhat","n.eff","nuRecords","nuSites","Region")]
   
   return(temp)
 })
@@ -57,23 +60,27 @@ annualPredictions <- function(models){
 #plot these predictions (restrict to species with more than 50 observations)
 #@param myAnnualPredictions = output from annualPredictions()
 
-plotPredictions <- function(myAnnualPredictions){
+plotPredictions <- function(myAnnualPredictions, regions_to_include=NULL){
 
 #decide on year breaks to nearest decade
-surveyYears<-sort(unique(myAnnualPredictions$Year))
+  if(is.null(regions_to_include)) regions_to_include <- levels(as.factor(myAnnualPredictions$Region))
+  regions_to_include <- gsub("-","_",regions_to_include)
+  df<- subset(myAnnualPredictions,nuRecords>50 & Region %in% c(regions_to_include))
+surveyYears<-sort(unique(df$Year))
 surveyYears<-surveyYears[surveyYears%%10==0]
-
+pointcols<- ifelse(df$Rhat<1.1, "cadetblue3","salmon")
+pointpch<- ifelse(df$Rhat<1.1, 16,6)
 require(ggplot2)
   
 #plot
-ggplot(data=subset(myAnnualPredictions,nuRecords>50)) +
-  geom_line(aes(x = Year, mean))+
-  geom_point(aes(x = Year, mean,colour = factor(Rhat<1.1)))+
-  geom_ribbon(aes(x=Year, ymin = quant_025, ymax = quant_975), alpha=0.50)+
+ggplot(data=df) +
+  geom_line(aes(x = Year, mean, color=Region), lty=1, lwd=1.3)+
+  geom_ribbon(aes(x=Year, ymin = quant_025, ymax = quant_975, fill=Region), alpha=0.30)+
+  geom_point(aes(x = Year, mean),color= pointcols, size=1.5, shape=pointpch)+
   theme_bw() +
   scale_x_continuous(breaks = surveyYears, labels = surveyYears)+
   facet_wrap( ~ Species) +
-  theme(legend.position = "none") +
+  theme(legend.position ="bottom") +
   ylab("Predicted occupancy proportion")
 }
 
